@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedQuery — Document Extraction</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #181b22;
+    --border: #2a2e38;
+    --text: #e6e8eb;
+    --text-dim: #8b909c;
+    --accent: #4f8cff;
+    --accent-dim: #2d5bb8;
+    --error: #ff5c5c;
+    --success: #3ddc84;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    max-width: 520px;
+    width: 100%;
+  }
+  h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+    font-weight: 600;
+  }
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin: 0 0 24px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+  input[type="password"], select {
+    width: 100%;
+    padding: 10px 12px;
+    background: #11141a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+  }
+  .dropzone {
+    margin-top: 16px;
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 32px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .dropzone:hover, .dropzone.dragover {
+    border-color: var(--accent);
+    background: rgba(79, 140, 255, 0.05);
+  }
+  .dropzone p {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  .dropzone .filename {
+    color: var(--text);
+    font-weight: 500;
+    margin-top: 6px;
+  }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; }
+  button {
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled {
+    background: var(--accent-dim);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  .status {
+    margin-top: 16px;
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    display: none;
+  }
+  .status.info { display: block; background: rgba(79,140,255,0.1); color: var(--accent); }
+  .status.error { display: block; background: rgba(255,92,92,0.1); color: var(--error); }
+  .status.success { display: block; background: rgba(61,220,132,0.1); color: var(--success); }
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid rgba(79,140,255,0.3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  pre {
+    margin-top: 16px;
+    background: #11141a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 12px;
+    max-height: 360px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .actions { display: flex; gap: 10px; margin-top: 12px; }
+  .actions button { margin-top: 0; }
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .key-saved {
+    font-size: 12px;
+    color: var(--success);
+    margin-top: 6px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>MedQuery Document Extraction</h1>
+  <p class="subtitle">Upload a PDF to run OCR + structured extraction.</p>
+
+  <label for="apiKey">API Key</label>
+  <input type="password" id="apiKey" placeholder="Paste your API key" autocomplete="off">
+  <div class="key-saved" id="keySaved">✓ Saved for this browser session</div>
+
+  <label>Document</label>
+  <div class="dropzone" id="dropzone">
+    <p>Click to choose a PDF, or drag one here</p>
+    <div class="filename" id="filename"></div>
+  </div>
+  <input type="file" id="fileInput" accept=".pdf" style="display:none">
+
+  <div class="row">
+    <div>
+      <label for="docType">Document Type</label>
+      <select id="docType">
+        <option value="auto">auto</option>
+      </select>
+    </div>
+    <div>
+      <label for="compression">Compression</label>
+      <select id="compression">
+        <option value="tiny">tiny</option>
+        <option value="small">small</option>
+        <option value="base">base</option>
+        <option value="large" selected>large</option>
+        <option value="high">high</option>
+      </select>
+    </div>
+  </div>
+
+  <label for="ocrEngine">OCR Engine</label>
+  <select id="ocrEngine">
+    <option value="auto" selected>auto</option>
+    <option value="paddleocr">paddleocr</option>
+    <option value="lighton">lighton</option>
+  </select>
+
+  <button id="submitBtn">Extract</button>
+
+  <div class="status" id="status"></div>
+
+  <div id="resultActions" class="actions" style="display:none;">
+    <button class="btn-secondary" id="copyBtn">Copy JSON</button>
+    <button class="btn-secondary" id="downloadBtn">Download JSON</button>
+  </div>
+  <pre id="resultBox" style="display:none;"></pre>
+</div>
+
+<script>
+  // Same-origin by default — change this if the UI is served from a
+  // different host than the API (e.g. a separate static bucket).
+  const API_BASE = "";
+
+  const apiKeyInput = document.getElementById("apiKey");
+  const keySaved    = document.getElementById("keySaved");
+  const dropzone    = document.getElementById("dropzone");
+  const fileInput   = document.getElementById("fileInput");
+  const filenameEl  = document.getElementById("filename");
+  const submitBtn   = document.getElementById("submitBtn");
+  const statusEl    = document.getElementById("status");
+  const resultBox   = document.getElementById("resultBox");
+  const resultActions = document.getElementById("resultActions");
+  const copyBtn     = document.getElementById("copyBtn");
+  const downloadBtn = document.getElementById("downloadBtn");
+
+  let selectedFile = null;
+  let lastResult = null;
+
+  // ── API key: sessionStorage only (cleared when the tab/browser closes,
+  // never written into this file, never sent anywhere but the header below) ──
+  const savedKey = sessionStorage.getItem("medquery_api_key");
+  if (savedKey) {
+    apiKeyInput.value = savedKey;
+    keySaved.style.display = "block";
+  }
+  apiKeyInput.addEventListener("input", () => {
+    sessionStorage.setItem("medquery_api_key", apiKeyInput.value);
+    keySaved.style.display = apiKeyInput.value ? "block" : "none";
+  });
+
+  // ── File picking ──────────────────────────────────────────────────────────
+  dropzone.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", (e) => setFile(e.target.files[0]));
+
+  ["dragover", "dragleave", "drop"].forEach(evt => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.classList.toggle("dragover", evt === "dragover");
+      if (evt === "drop" && e.dataTransfer.files.length) {
+        setFile(e.dataTransfer.files[0]);
+      }
+    });
+  });
+
+  function setFile(file) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      showStatus("error", "Only PDF files are accepted.");
+      return;
+    }
+    selectedFile = file;
+    filenameEl.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
+  }
+
+  function showStatus(type, message) {
+    statusEl.className = `status ${type}`;
+    statusEl.innerHTML = message;
+  }
+
+  function hideResult() {
+    resultBox.style.display = "none";
+    resultActions.style.display = "none";
+    lastResult = null;
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
+  submitBtn.addEventListener("click", async () => {
+    const key = apiKeyInput.value.trim();
+    if (!key) {
+      showStatus("error", "Enter your API key first.");
+      return;
+    }
+    if (!selectedFile) {
+      showStatus("error", "Choose a PDF first.");
+      return;
+    }
+
+    hideResult();
+    submitBtn.disabled = true;
+    showStatus("info", '<span class="spinner"></span>Processing — this can take a few minutes for larger documents…');
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("document_type", document.getElementById("docType").value);
+    formData.append("compression_mode", document.getElementById("compression").value);
+    formData.append("ocr_engine", document.getElementById("ocrEngine").value);
+    formData.append("enhance_contrast", "false");
+
+    try {
+      const res = await fetch(`${API_BASE}/extract`, {
+        method: "POST",
+        headers: { "X-API-Key": key },
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const detail = data && data.detail ? data.detail : `Request failed (${res.status})`;
+        showStatus("error", detail);
+        return;
+      }
+
+      lastResult = data;
+      showStatus("success", "Extraction complete.");
+      resultBox.textContent = JSON.stringify(data, null, 2);
+      resultBox.style.display = "block";
+      resultActions.style.display = "flex";
+
+    } catch (err) {
+      showStatus("error", "Network error — could not reach the API. " + err.message);
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  copyBtn.addEventListener("click", () => {
+    if (!lastResult) return;
+    navigator.clipboard.writeText(JSON.stringify(lastResult, null, 2));
+    copyBtn.textContent = "Copied!";
+    setTimeout(() => (copyBtn.textContent = "Copy JSON"), 1500);
+  });
+
+  downloadBtn.addEventListener("click", () => {
+    if (!lastResult) return;
+    const blob = new Blob([JSON.stringify(lastResult, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "result.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+</script>
+
+</body>
+</html>
