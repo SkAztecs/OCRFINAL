@@ -23,16 +23,13 @@ On Mac (Apple Silicon), the pipeline uses **one worker** with **MPS** (Metal). P
 ## Part 0 — Before You Start
 
 ### Hardware
-________________________________________________________________________________
-| Component |          Minimum           |               Recommended            |
-|-----------|----------------------------|--------------------------------------|
-|    Mac    | Apple Silicon (M1/M2/M3/M4)|M2 Pro / M3 with 16 GB+ unified memory|
-|           |         or Intel           |                                      |
-|-----------|----------------------------|--------------------------------------|
-|    RAM    |           16 GB            |                24–32 GB              |
-|-----------|----------------------------|--------------------------------------|
-|    Disk   |         20 GB free         |    40 GB+ (models + job workspaces)  |
-‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| Mac | Apple Silicon (M1/M2/M3/M4) or Intel | M2 Pro / M3 with 16 GB+ unified memory |
+| RAM | 16 GB | 24–32 GB (qwen3:8b + OCR models are memory-heavy) |
+| Disk | 20 GB free | 40 GB+ (models + job workspaces) |
+
 ### What you need installed globally
 
 - macOS 12.3+ (for Apple Silicon MPS)
@@ -113,7 +110,7 @@ cd ~/medquery-pipeline
 You need these files in that folder:
 
 | File | Purpose |
-| --- | --- |
+|------|---------|
 | `medical_agent.py` | Core OCR + extraction pipeline |
 | `api_server.py` | Async FastAPI API (202 + polling) |
 | `model_worker.py` | GPU/MPS worker process |
